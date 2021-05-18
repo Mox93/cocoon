@@ -1,5 +1,16 @@
+__pycache__
+
+# Vertula Environment
 .venv
+
+# Brainstorming
+.demo
+
+# Packages
+dist
+build
+*.egg-info
+
+# IDE
 .idea
 .vscode
-.demo
-__pycache__
