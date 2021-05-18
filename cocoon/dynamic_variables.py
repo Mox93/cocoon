@@ -2,8 +2,8 @@ from cocoon.token_ import Token
 
 
 # TODO: (use cases)
-#  - pass a proxy for None so it doesn't get filter out by FastAPI. [DONE]
-#  - generate a new fake value for each proxy instance. [DONE]
+#  - pass a token for None so it doesn't get filter out by FastAPI. [DONE]
+#  - generate a new fake value for each token instance. [DONE]
 #  - have multiple proxy instances share the same fake value. [DONE]
 #  - define custom proxies. [DONE]
 #  - configure the Faker instance used for generating values. [DONE]
