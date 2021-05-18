@@ -7,7 +7,10 @@ from typing import (
     Union,
 )
 
-from faker import Faker
+try:
+    from faker import Faker
+except ImportError:
+    Faker = None
 
 
 _ProxyQueue = List[
@@ -19,7 +22,7 @@ _ProxyQueue = List[
 
 
 class Proxy(object):
-    __core__ = Faker()
+    __core__ = Faker() if Faker else None
 
     def __init__(self):
         self.__queue__: _ProxyQueue = [(None, [])]
@@ -37,6 +40,13 @@ class Proxy(object):
         return self
 
     def __resolve__(self) -> Any:
+        if self.__core__ is None:
+            raise RuntimeError(
+                "No core was set!\n"
+                "TIP: you can install 'faker' and it will be used "
+                "as the core"
+            )
+
         obj = self.__core__
 
         for item, params in self.__queue__:
