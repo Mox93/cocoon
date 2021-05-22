@@ -17,7 +17,7 @@ _ClassCleanup = Union[Dict["Token", _Cleanup], bool]
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
-    lambda arg: f"{arg} can only contain non-alphanumeric characters"
+    lambda arg: f"{arg} can only contain non-alphanumeric characters."
 )
 _FULL_MATCH_EXCEPTION_MESSAGE = (
     "injecting a full_match token into a string is not allowed.\n"
@@ -32,7 +32,7 @@ def _has_alphanumeric(string: str) -> bool:
 
 def _validate_prefix(prefix: str):
     if not type(prefix) == str:
-        raise TypeError("prefix must be a string")
+        raise TypeError("prefix must be a string.")
 
     if _has_alphanumeric(prefix):
         raise ValueError(
@@ -42,12 +42,12 @@ def _validate_prefix(prefix: str):
 
 def _validate_brackets(brackets: str):
     if not type(brackets) == str:
-        raise TypeError("brackets must be a string")
+        raise TypeError("brackets must be a string.")
 
     if len(brackets) < 2 or len(brackets) % 2 != 0:
         raise ValueError(
             "brackets must be an even number of characters "
-            "with a minimum of 2"
+            "with a minimum of 2."
         )
 
     if _has_alphanumeric(brackets):
@@ -58,10 +58,10 @@ def _validate_brackets(brackets: str):
 
 def _validate_size(size: int):
     if not type(size) == int:
-        raise TypeError("size must be an int")
+        raise TypeError("size must be an int.")
 
     if size <= 0:
-        raise ValueError("size must be a positive number")
+        raise ValueError("size must be a positive number.")
 
 
 def _generate_id(brackets: str, prefix: str, size: int):
@@ -91,7 +91,7 @@ class TokenMeta(type):
             return Proxy()
 
         raise AttributeError(
-            f"type object '{self.__name__}' has no attribute '{item}'"
+            f"type object '{self.__name__}' has no attribute '{item}'."
         )
 
 
@@ -113,8 +113,7 @@ class Token(object, metaclass=TokenMeta):
             **kwargs,
     ):
         """
-        An object for dynamically injecting values into strings.
-
+        a class for dynamically injecting values into objects.
         :param replacement: a value or callable that gets injected in
          the future.
         :param full_match: whether the injected value should be stand
@@ -126,6 +125,13 @@ class Token(object, metaclass=TokenMeta):
          randomly generated id.
         :keyword size: an integer for the byte size of the
          token_urlsafe.
+        :keyword call_depth: an integer for the number of nested
+         callables a replacement can have.
+        :keyword always_replace: after exceeding the call_depth:
+         (if True) the replacement will be returned regardless of
+         its type.
+         (if False) a ValueError will be raised if the replacement
+         is still a callable.
         """
 
         brackets = kwargs.pop("brackets", self.__brackets__)
@@ -168,7 +174,7 @@ class Token(object, metaclass=TokenMeta):
             return self
 
         if not type(key) in (int, str):
-            raise ValueError("a key can only be an <int> or a <str>")
+            raise ValueError("a key can only be of type <int> or <str>.")
 
         if key in self.__cached__:
             return self.__cached__[key]
