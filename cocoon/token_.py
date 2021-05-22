@@ -5,6 +5,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Mapping,
     Set,
     Union,
 )
@@ -13,7 +14,9 @@ from cocoon.proxy import Proxy
 
 
 _Cleanup = Union[int, str, Iterable[Union[int, str]], bool]
-_ClassCleanup = Union[Dict["Token", _Cleanup], bool]
+_ClassCleanup = Union[
+    Mapping["Token", _Cleanup], Iterable["Token"], bool
+]
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
@@ -64,25 +67,26 @@ def _validate_size(size: int):
         raise ValueError("size must be a positive number.")
 
 
-def _generate_id(brackets: str, prefix: str, size: int):
-    i = int(len(brackets) / 2)
-    return (
-        f"{brackets[:i]}{prefix}{token_urlsafe(size)}{brackets[i:]}"
-    )
+def _validate_meta(brackets: str, prefix: str, size: int):
+    if brackets is not None:
+        _validate_brackets(brackets)
+    if prefix is not None:
+        _validate_prefix(prefix)
+    if size is not None:
+        _validate_size(size)
 
 
 def _generate_regex(
         brackets: str,
         prefix: str,
-        placeholder: str,
+        id_: str,
 ) -> str:
-    id_length = len(placeholder) - (len(brackets) + len(prefix))
     i = int(len(brackets) / 2)
     b1 = "\\".join(char for char in brackets[:i])
     b2 = "\\".join(char for char in brackets[i:])
     p = "\\".join(char for char in prefix)
 
-    return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{id_length}}}\{b2}"
+    return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{len(id_)}}}\{b2}"
 
 
 class TokenMeta(type):
@@ -104,7 +108,7 @@ class Token(object, metaclass=TokenMeta):
 
     def __init__(
             self,
-            replacement: Union[Callable[[], Any], Any],
+            replacement: Union[Proxy, Callable[[], Any], Any],
             *,
             full_match: bool = False,
             # TODO:
@@ -134,81 +138,87 @@ class Token(object, metaclass=TokenMeta):
          is still a callable.
         """
 
-        brackets = kwargs.pop("brackets", self.__brackets__)
-        prefix = kwargs.pop("prefix", self.__prefix__)
-        size = kwargs.pop("size", self.__size__)
+        brackets = kwargs.get("brackets")
+        prefix = kwargs.get("prefix")
+        size = kwargs.get("size")
 
-        _validate_prefix(prefix)
-        _validate_brackets(brackets)
-        _validate_size(size)
-
-        placeholder = _generate_id(brackets, prefix, size)
-        re_sec = _generate_regex(brackets, prefix, placeholder)
-
-        # the placeholder value that will be replaced with
-        # the final value at parsing or injection time.
-        self.__placeholder__ = placeholder
-
-        # updating the regular expression used for extracting
-        # placeholders.
-        self.__regex__.add(re_sec)
+        _validate_meta(brackets, prefix, size)
 
         # the meta data used for creating a placeholder, needed for
         # creating cached instances.
-        self.__prefix__ = prefix
-        self.__brackets__ = brackets
-        self.__size__ = size
+        self.__prefix = prefix
+        self.__brackets = brackets
+        self.__size = size
 
-        # arguments passed to the __init__ method
-        self.__replacement__ = replacement
-        self.__full_match__ = full_match
+        # the unique id that will be used to identify the placeholder
+        # to replace it with the final value at parsing or injection
+        # time.
+        self.__id = token_urlsafe(self.size)
+
+        # updating the regular expression used for extracting
+        # placeholders.
+        self.__regex__.add(
+            _generate_regex(self.brackets, self.prefix, self.__id)
+        )
+
+        # arguments passed at class initialization
+        self.__replacement = replacement
+        self.__full_match = full_match
+
+        # kwargs passed at class initialization
+        self.__call_depth = kwargs.get("call_depth", 10)
+        self.__always_replace = kwargs.get("always_replace", False)
 
         #
-        self.__cached__ = {}
+        self.__cached = {}
 
         #
-        self.__instances__[placeholder] = self
+        self.__instances__[str(self)] = self
 
-    def __call__(self, key: Union[int, str] = None) -> "Token":
-        if key is None:
-            return self
-
-        if not type(key) in (int, str):
+    def __getitem__(self, item: Union[int, str]) -> "Token":
+        if not type(item) in (int, str):
             raise ValueError("a key can only be of type <int> or <str>.")
 
-        if key in self.__cached__:
-            return self.__cached__[key]
+        if item in self.__cached:
+            return self.__cached[item]
 
         token = Token(
             self.replacement,
-            prefix=self.__prefix__,
-            brackets=self.__brackets__,
-            size=self.__size__,
+            prefix=self.prefix,
+            brackets=self.brackets,
+            size=self.size,
         )
+        self.__cached[item] = token
 
-        self.__cached__[key] = token
         return token
 
     def __str__(self):
-        return self.__placeholder__
+        brackets = self.brackets
+        prefix = self.prefix
+        id_ = self.__id
+        i = int(len(brackets) / 2)
+
+        return f"{brackets[:i]}{prefix}{id_}{brackets[i:]}"
 
     def __repr__(self):
-        return f"\'{self.__placeholder__}\'"
+        return f"\'{self}\'"
 
     def __hash__(self):
-        return hash(self.__placeholder__)
+        return hash(str(self))
 
     def __eq__(self, other):
         return str(self) == str(other)
 
     def __cleanup__(self, reset: _Cleanup):
         if type(reset) in (int, str):
-            self.reset(reset)
-        elif isinstance(reset, Iterable) and reset:
+            self.reset_cache(reset)
+
+        elif isinstance(reset, Iterable):
             if reset := tuple(reset):
-                self.reset(*reset)
-        elif reset:
-            self.reset()
+                self.reset_cache(*reset)
+
+        elif reset is True:
+            self.reset_cache()
 
     @classmethod
     def parse(cls, obj: Union["Token", str]) -> str:
@@ -225,26 +235,50 @@ class Token(object, metaclass=TokenMeta):
     def set_core(cls, core: Any, reset: _ClassCleanup = True):
         cls.core.__set_core__(core)
 
-        if type(reset) == dict:
+        if isinstance(reset, Mapping):
             for token, cleanup in reset.items():
                 token.__cleanup__(cleanup)
-        elif reset:
+
+        elif isinstance(reset, Iterable):
+            for token in reset:
+                token.__cleanup__(True)
+
+        elif reset is True:
             for token in cls.__instances__.values():
                 token.__cleanup__(reset)
 
     @property
+    def brackets(self) -> str:
+        return self.__brackets or self.__brackets__
+
+    @property
+    def prefix(self) -> str:
+        return self.__prefix or self.__prefix__
+
+    @property
+    def size(self) -> int:
+        return self.__size or self.__size__
+
+    @property
     def replacement(self) -> Any:
-        if type(self.__replacement__) == Proxy:
-            return self.__replacement__.__resolve__()
+        replacement = self.__replacement
+        tries = 0
 
-        if callable(self.__replacement__):
-            return self.__replacement__()
+        while tries < self.__call_depth and callable(replacement):
+            if isinstance(replacement, Proxy):
+                replacement = replacement.__resolve__()
+                continue
 
-        return self.__replacement__
+            replacement = replacement()
+            tries += 1
 
-    @replacement.setter
-    def replacement(self, value: Any):
-        self.__replacement__ = value
+        if callable(replacement) and not self.__always_replace:
+            raise RuntimeError(
+                "maximum call depth was reached and replacement is "
+                "still a callable."
+            )
+
+        return replacement
 
     def inject_into(
             self,
@@ -254,9 +288,9 @@ class Token(object, metaclass=TokenMeta):
             deep: bool = True,
     ) -> Any:
         result = str(obj)
-        cached = self.__cached__.values() if deep else []
+        cached = self.__cached.values() if deep else []
 
-        if self.__full_match__:
+        if self.__full_match:
             if self == result:
                 result = self.replacement
             elif str(self) in result:
@@ -278,13 +312,13 @@ class Token(object, metaclass=TokenMeta):
         self.__cleanup__(reset)
         return result
 
-    def reset(self, *keys: Union[int, str]):
+    def reset_cache(self, *keys: Union[int, str]):
         if not keys:
-            for token in self.__cached__.values():
-                token.replacement = self.replacement
+            for token in self.__cached.values():
+                token.__replacement = self.replacement
 
             return
 
         for key in keys:
-            if token := self.__cached__.get(key):
-                token.replacement = self.replacement
+            if token := self.__cached.get(key):
+                token.__replacement__ = self.replacement
