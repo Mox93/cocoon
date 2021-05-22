@@ -20,7 +20,9 @@ _ClassCleanup = Union[
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
-    lambda arg: f"{arg} can only contain non-alphanumeric characters."
+    lambda arg: (
+        f"{arg} can only contain non-alphanumeric characters."
+    )
 )
 _FULL_MATCH_EXCEPTION_MESSAGE = (
     "injecting a full_match token into a string is not allowed.\n"
@@ -95,7 +97,8 @@ class TokenMeta(type):
             return Proxy()
 
         raise AttributeError(
-            f"type object '{self.__name__}' has no attribute '{item}'."
+            f"type object '{self.__name__}' "
+            f"has no attribute '{item}'."
         )
 
 
@@ -177,7 +180,9 @@ class Token(object, metaclass=TokenMeta):
 
     def __getitem__(self, item: Union[int, str]) -> "Token":
         if not type(item) in (int, str):
-            raise ValueError("a key can only be of type <int> or <str>.")
+            raise ValueError(
+                "a key can only be of type <int> or <str>."
+            )
 
         if item in self.__cached:
             return self.__cached[item]
@@ -304,7 +309,9 @@ class Token(object, metaclass=TokenMeta):
 
         else:
             if str(self) in result:
-                result = result.replace(str(self), str(self.replacement))
+                result = result.replace(
+                    str(self), str(self.replacement)
+                )
 
             for token in cached:
                 result = token.inject_into(result)
