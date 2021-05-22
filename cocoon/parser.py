@@ -1,26 +1,23 @@
-from typing import Mapping, Iterable
+from typing import (
+    Iterable,
+    Mapping,
+    Union,
+)
 
 from cocoon.token_ import Token
+from cocoon.utils import deep_apply
 
 
-def parse(obj):
+ObjectToParse = Union[Token, set, Mapping, Iterable]
+ParsedObject = Union[set, Mapping, Iterable]
+
+
+def parse(obj: ObjectToParse) -> ParsedObject:
     """
-    recursively loop over elements and parse any instance of a string or a
-    :param obj:
+    a function that recursively loop over elements and parse any
+    instance of a string or a Token.
+    :param obj: a dictionary containing strings with tokens.
     :return: a new object with all placeholders replaced with the
      appropriate value.
     """
-    if isinstance(obj, (str, Token)):
-        return Token.parse(obj)
-
-    type_ = obj.__class__
-
-    if isinstance(obj, Mapping):
-        return type_(
-            (key, parse(value)) for key, value in obj.items()
-        )
-
-    if isinstance(obj, Iterable):
-        return type_(parse(value) for value in obj)
-
-    return obj
+    return deep_apply(obj, (str, Token), Token.parse)
