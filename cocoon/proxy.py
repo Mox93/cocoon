@@ -1,28 +1,58 @@
 from typing import (
     Any,
-    Dict,
     List,
     Optional,
     Tuple,
     Union,
 )
 
-try:
-    from faker import Faker
-except ImportError:
-    Faker = None
+from cocoon.core import fake
+from cocoon.utils import deep_apply
+
+
+class Arguments(object):
+    def __init__(self, args: tuple, kwargs: dict):
+        self.args = args
+        self.kwargs = kwargs
+
+    def __repr__(self):
+        args = ", ".join(_repr(self.args))
+        kwargs = ", ".join(
+            f"{key}={value}" for key, value in self.kwargs.items()
+        )
+
+        return f"({', '.join(filter(lambda x: x, (args, kwargs)))})"
+
+
+class Item(object):
+    def __init__(self, item: Any):
+        self.item = item
+
+    def __repr__(self):
+        if isinstance(self.item, slice):
+            has_start = self.item.start is not None
+            has_stop = self.item.stop is not None
+            has_step = self.item.step is not None
+
+            result = (
+                f"{self.item.start if has_start else ''}:"
+                f"{self.item.stop if has_stop else ''}"
+                f"{f':{str(self.item.step)}' if has_step else ''}"
+            )
+
+        else:
+            result = self.item
+
+        return f"[{result}]"
 
 
 _ProxyQueue = List[
-    Tuple[
-        Optional[str],
-        List[Union[str, int, Tuple[Tuple[Any, ...], Dict[str, Any]]]]
-    ]
+    Tuple[Optional[str], List[Union[Arguments, Item]]]
 ]
 
 
 class Proxy(object):
-    __core__ = Faker() if Faker else None
+    __core__ = fake
 
     def __init__(self):
         self.__queue__: _ProxyQueue = [(None, [])]
@@ -31,20 +61,21 @@ class Proxy(object):
         self.__queue__.append((item, []))
         return self
 
-    def __getitem__(self, key):
-        self.__queue__[-1][1].append(key)
+    def __getitem__(self, item):
+        self.__queue__[-1][1].append(Item(item))
         return self
 
     def __call__(self, *args, **kwargs) -> "Proxy":
-        self.__queue__[-1][1].append((args, kwargs))
+        self.__queue__[-1][1].append(Arguments(args, kwargs))
         return self
 
     def __resolve__(self) -> Any:
         if self.__core__ is None:
-            raise RuntimeError(
-                "No core was set!\n"
-                "TIP: you can install 'faker' and it will be used "
-                "as the core"
+            raise ValueError(
+                "No core was found.\n"
+                "TIP: you can install 'faker' and it will be used as the core "
+                "or define your own core and set it though "
+                "'Token.set_core(core)'."
             )
 
         obj = self.__core__
@@ -53,42 +84,44 @@ class Proxy(object):
             obj = getattr(obj, item) if item else obj
 
             for element in params:
-                if type(element) == tuple:
-                    args, kwargs = element
-                    obj = obj(*args, **kwargs)
-                else:
-                    obj = obj[element]
+                if type(element) == Arguments:
+                    args = _resolve(element.args)
+                    kwargs = _resolve(element.kwargs)
 
-        return obj() if callable(obj) else obj
+                    obj = obj(*args, **kwargs)
+                elif type(element) == Item:
+                    obj = obj[element.item]
+                else:
+                    raise ValueError(
+                        f"element '{element}' of type "
+                        f"{type(element)} was found."
+                    )
+
+        return obj
 
     @classmethod
     def __set_core__(cls, generator):
         cls.__core__ = generator
 
-    def __str__(self):
+    def __repr__(self):
         result = f"{self.__class__.__name__}()"
 
-        for item, params in self.__queue__:
+        for i, (item, params) in enumerate(self.__queue__):
             result += f".{item}" if item else ""
 
             for element in params:
-
-                if type(element) == tuple:
-                    args, kwargs = element
-                    args_ = ', '.join(args)
-                    kwargs_ = ', '.join(
-                        f'{key}={value}' for key, value in kwargs.items()
-                    )
-                    params_ = ', '.join(
-                        filter(lambda x: x, (args_, kwargs_))
-                    )
-
-                    result += f"({params_})"
-
-                elif isinstance(element, str):
-                    result += f"['{element}']"
-
-                elif isinstance(element, int):
-                    result += f"[{element}]"
+                result += repr(element)
 
         return result
+
+
+def _resolve(obj):
+    return deep_apply(
+        obj,
+        lambda x: isinstance(x, Proxy),
+        lambda p: p.__resolve__()
+    )
+
+
+def _repr(obj):
+    return deep_apply(obj, lambda x: isinstance(x, Proxy), repr)
