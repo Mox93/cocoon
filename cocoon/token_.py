@@ -6,6 +6,7 @@ from typing import (
     Dict,
     Iterable,
     Mapping,
+    overload,
     Set,
     Union,
 )
@@ -92,14 +93,9 @@ def _generate_regex(
 
 
 class TokenMeta(type):
-    def __getattr__(self, item):
-        if item == "core":
-            return Proxy()
-
-        raise AttributeError(
-            f"type object '{self.__name__}' "
-            f"has no attribute '{item}'."
-        )
+    @property
+    def core(cls) -> Proxy:
+        return Proxy()
 
 
 class Token(object, metaclass=TokenMeta):
@@ -121,24 +117,25 @@ class Token(object, metaclass=TokenMeta):
     ):
         """
         a class for dynamically injecting values into objects.
-        :param replacement: a value or callable that gets injected in
-         the future.
-        :param full_match: whether the injected value should be stand
-         alone or can be surrounded by other characters.
+        :param replacement: a value or callable that gets injected in the
+         future.
+        :param full_match: whether the injected value should be stand alone or
+         can be surrounded by other characters.
         :param kwargs: additional customizations.
-        :keyword brackets: a string for the opening and closing
-         brackets that will be used in creating the placeholder.
-        :keyword prefix: a string that will be attached to the
-         randomly generated id.
-        :keyword size: an integer for the byte size of the
-         token_urlsafe.
-        :keyword call_depth: an integer for the number of nested
-         callables a replacement can have.
+        :keyword brackets: a string for the opening and closing brackets that
+         will be used in creating the placeholder.
+        :keyword prefix: a string that will be attached to the randomly
+         generated id.
+        :keyword size: an integer for the byte size of the token_urlsafe.
+        :keyword call_depth: an integer for the number of nested callables a
+         replacement can have.
         :keyword always_replace: after exceeding the call_depth:
          (if True) the replacement will be returned regardless of
          its type.
-         (if False) a ValueError will be raised if the replacement
-         is still a callable.
+         (if False) a ValueError will be raised if the replacement is still a
+          callable.
+        :keyword anonymous: a boolean for determining if this instance should
+         be held onto or not
         """
 
         brackets = kwargs.get("brackets")
@@ -153,16 +150,18 @@ class Token(object, metaclass=TokenMeta):
         self.__brackets = brackets
         self.__size = size
 
-        # the unique id that will be used to identify the placeholder
-        # to replace it with the final value at parsing or injection
-        # time.
+        # the unique id that will be used to identify the placeholder to
+        # replace it with the final value at parsing or injection time.
         self.__id = token_urlsafe(self.size)
 
-        # updating the regular expression used for extracting
-        # placeholders.
-        self.__regex__.add(
-            _generate_regex(self.brackets, self.prefix, self.__id)
-        )
+        if not kwargs.get("anonymous"):
+            # keep track of all instances for parsing and resetting
+            self.__instances__[str(self)] = self
+
+            # updating the regular expression used for extracting placeholders.
+            self.__regex__.add(
+                _generate_regex(self.brackets, self.prefix, self.__id)
+            )
 
         # arguments passed at class initialization
         self.__replacement = replacement
@@ -174,9 +173,6 @@ class Token(object, metaclass=TokenMeta):
 
         #
         self.__cached = {}
-
-        #
-        self.__instances__[str(self)] = self
 
     def __getitem__(self, item: Union[int, str]) -> "Token":
         if not type(item) in (int, str):
@@ -226,7 +222,15 @@ class Token(object, metaclass=TokenMeta):
             self.reset_cache()
 
     @classmethod
-    def parse(cls, obj: Union["Token", str]) -> str:
+    @overload
+    def parse(cls, obj: "Token") -> Any: ...
+
+    @classmethod
+    @overload
+    def parse(cls, obj: str) -> str: ...
+
+    @classmethod
+    def parse(cls, obj):
         result = str(obj)
         placeholders = set(findall("|".join(cls.__regex__), result))
 
@@ -269,10 +273,13 @@ class Token(object, metaclass=TokenMeta):
         replacement = self.__replacement
         tries = 0
 
-        while tries < self.__call_depth and callable(replacement):
+        while callable(replacement):
             if isinstance(replacement, Proxy):
                 replacement = replacement.__resolve__()
                 continue
+
+            if tries >= self.__call_depth:
+                break
 
             replacement = replacement()
             tries += 1
@@ -308,9 +315,10 @@ class Token(object, metaclass=TokenMeta):
                     raise ValueError(_FULL_MATCH_EXCEPTION_MESSAGE)
 
         else:
-            if str(self) in result:
+            count = result.count(str(self))
+            for _ in range(count):
                 result = result.replace(
-                    str(self), str(self.replacement)
+                    str(self), str(self.replacement), 1
                 )
 
             for token in cached:
