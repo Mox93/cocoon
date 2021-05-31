@@ -110,6 +110,9 @@ class Token(object, metaclass=TokenMeta):
             replacement: Union[Proxy, Callable[[], Any], Any],
             *,
             full_match: bool = False,
+            anonymous: bool = False,
+            call_depth: int = 10,
+            always_replace: bool = False,
             # TODO:
             #  - accept user defined matching method.
             #  - accept user defined replacing method.
@@ -154,8 +157,8 @@ class Token(object, metaclass=TokenMeta):
         # replace it with the final value at parsing or injection time.
         self.__id = token_urlsafe(self.size)
 
-        if not kwargs.get("anonymous"):
-            # keep track of all instances for parsing and resetting
+        if not anonymous:
+            # Keep track of all instances for parsing and resetting.
             self.__instances__[str(self)] = self
 
             # updating the regular expression used for extracting placeholders.
@@ -166,12 +169,11 @@ class Token(object, metaclass=TokenMeta):
         # arguments passed at class initialization
         self.__replacement = replacement
         self.__full_match = full_match
+        self.__call_depth = call_depth
+        self.__always_replace = always_replace
+        self.__anonymous = anonymous
 
-        # kwargs passed at class initialization
-        self.__call_depth = kwargs.get("call_depth", 10)
-        self.__always_replace = kwargs.get("always_replace", False)
-
-        #
+        # For cashing instances with fixed replacement of the current token.
         self.__cached = {}
 
     def __getitem__(self, item: Union[int, str]) -> "Token":
@@ -185,6 +187,10 @@ class Token(object, metaclass=TokenMeta):
 
         token = Token(
             self.replacement,
+            full_match=self.__full_match,
+            anonymous=self.__anonymous,
+            call_depth=0,
+            always_replace=self.__always_replace,
             prefix=self.prefix,
             brackets=self.brackets,
             size=self.size,
