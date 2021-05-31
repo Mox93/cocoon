@@ -1,3 +1,5 @@
+"""This module exposes the main Token class used by this package."""
+
 from re import findall
 from secrets import token_urlsafe
 from typing import (
@@ -12,6 +14,9 @@ from typing import (
 )
 
 from cocoon.proxy import Proxy
+
+
+__all__ = ("Token",)
 
 
 _Cleanup = Union[int, str, Iterable[Union[int, str]], bool]
@@ -99,6 +104,8 @@ class TokenMeta(type):
 
 
 class Token(object, metaclass=TokenMeta):
+    """A class for dynamically injecting values into objects."""
+
     __prefix__: str = "$"
     __brackets__: str = "{{}}"
     __size__: int = 8
@@ -119,26 +126,31 @@ class Token(object, metaclass=TokenMeta):
             **kwargs,
     ):
         """
-        a class for dynamically injecting values into objects.
-        :param replacement: a value or callable that gets injected in the
-         future.
-        :param full_match: whether the injected value should be stand alone or
-         can be surrounded by other characters.
-        :param kwargs: additional customizations.
-        :keyword brackets: a string for the opening and closing brackets that
-         will be used in creating the placeholder.
-        :keyword prefix: a string that will be attached to the randomly
-         generated id.
-        :keyword size: an integer for the byte size of the token_urlsafe.
-        :keyword call_depth: an integer for the number of nested callables a
-         replacement can have.
-        :keyword always_replace: after exceeding the call_depth:
-         (if True) the replacement will be returned regardless of
-         its type.
-         (if False) a ValueError will be raised if the replacement is still a
-          callable.
-        :keyword anonymous: a boolean for determining if this instance should
-         be held onto or not
+        A token instance that functions as a placeholder for the given
+        replacement.
+
+        :param replacement: str
+            A value or callable that gets injected at the time of parsing.
+        :param full_match: bool
+            Whether the replacement value should be a stand alone token or can be
+            part of a string.
+        :param anonymous: bool
+            Whether this instance should be held onto for parsing or not.
+        :param call_depth: int
+            The number of nested callables a replacement can have.
+        :param always_replace: bool
+            After exceeding the call_depth:
+            (if True) the replacement will be returned regardless of its type.
+            (if False) a ValueError will be raised if the replacement is still
+            a callable.
+        :param kwargs: Additional customizations.
+        :keyword brackets: str
+            The opening and closing brackets that will be used in creating
+            the placeholder.
+        :keyword prefix: str
+            A symbol that will be placed before the randomly generated id.
+        :keyword size: int
+            The byte size of the token_urlsafe used as id.
         """
 
         brackets = kwargs.get("brackets")
@@ -147,13 +159,13 @@ class Token(object, metaclass=TokenMeta):
 
         _validate_meta(brackets, prefix, size)
 
-        # the meta data used for creating a placeholder, needed for
-        # creating cached instances.
+        # The meta data used for creating a placeholder, needed for creating
+        # cached instances.
         self.__prefix = prefix
         self.__brackets = brackets
         self.__size = size
 
-        # the unique id that will be used to identify the placeholder to
+        # The unique id that will be used to identify the placeholder to
         # replace it with the final value at parsing or injection time.
         self.__id = token_urlsafe(self.size)
 
@@ -161,12 +173,12 @@ class Token(object, metaclass=TokenMeta):
             # Keep track of all instances for parsing and resetting.
             self.__instances__[str(self)] = self
 
-            # updating the regular expression used for extracting placeholders.
+            # Adding to the regular expression used for extracting placeholders.
             self.__regex__.add(
                 _generate_regex(self.brackets, self.prefix, self.__id)
             )
 
-        # arguments passed at class initialization
+        # Arguments passed at class initialization.
         self.__replacement = replacement
         self.__full_match = full_match
         self.__call_depth = call_depth
