@@ -1,7 +1,14 @@
 from typing import (
     Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
     overload,
+    Protocol,
+    Sequence,
     TypeVar,
+    Union,
 )
 
 from cocoon.token_ import Token
@@ -36,3 +43,41 @@ def parse(obj):
         lambda x: isinstance(x, (str, Token)),
         Token.parse
     )
+
+
+OpenAPIGenerator = Callable[..., Dict[str, Any]]
+BaseRoute = TypeVar("BaseRoute")
+
+
+class _FastAPI(Protocol):
+    title: str
+    version: str
+    openapi_version: str
+    description: str
+    routes: Sequence[BaseRoute]
+    tags: Optional[List[Dict[str, Any]]]
+    servers: Optional[List[Dict[str, Union[str, Any]]]]
+    openapi_schema: Dict[str, Any]
+
+
+def dynamic_openapi(app: _FastAPI, get_openapi: OpenAPIGenerator):
+    """
+
+    :param app:
+    :param get_openapi:
+    :return:
+    """
+    def parse_openapi():
+        if not app.openapi_schema:
+            app.openapi_schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                tags=app.tags,
+                routes=app.routes,
+                servers=app.servers
+            )
+
+        return parse(app.openapi_schema)
+
+    return parse_openapi
