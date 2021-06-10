@@ -1,7 +1,5 @@
 from typing import (
     Any,
-    Mapping,
-    Iterable,
     List,
     Optional,
     Tuple,
@@ -9,10 +7,7 @@ from typing import (
 )
 
 from cocoon.core import fake
-from cocoon.utils import (
-    _StringLike,
-    deep_apply,
-)
+from cocoon.utils import deep_apply
 
 
 class Arguments(object):
@@ -21,7 +16,7 @@ class Arguments(object):
         self.kwargs = kwargs
 
     def __repr__(self):
-        args = ", ".join(_repr(arg) for arg in self.args)
+        args = ", ".join(repr(arg) for arg in self.args)
         kwargs = ", ".join(
             f"{key}={value}" for key, value in self.kwargs.items()
         )
@@ -34,6 +29,7 @@ class Item(object):
         self.item = item
 
     def __repr__(self):
+        print(repr(self.item))
         if isinstance(self.item, slice):
             has_start = self.item.start is not None
             has_stop = self.item.stop is not None
@@ -42,7 +38,7 @@ class Item(object):
             result = (
                 f"{self.item.start if has_start else ''}:"
                 f"{self.item.stop if has_stop else ''}"
-                f"{f':{str(self.item.step)}' if has_step else ''}"
+                f"{f':{self.item.step}' if has_step else ''}"
             )
 
         else:
@@ -107,11 +103,11 @@ class Proxy(object):
     def __repr__(self):
         result = f"{self.__class__.__name__}()"
 
-        for i, (item, params) in enumerate(self.__queue__):
-            result += f".{item}" if item else ""
-
-            for element in params:
-                result += repr(element)
+        for item, actions in self.__queue__:
+            result += (
+                (f".{item}" if item else "")
+                + "".join(repr(action) for action in actions)
+            )
 
         return result
 
@@ -122,30 +118,3 @@ def _resolve(obj):
         lambda x: isinstance(x, Proxy),
         lambda p: p.__resolve__()
     )
-
-
-def _repr(obj):
-    result = deep_apply(obj, lambda x: isinstance(x, str), lambda s: f"'{s}'")
-    result = deep_apply(result, lambda x: isinstance(x, Proxy), repr)
-    result = deep_apply(
-        result,
-        lambda x: isinstance(x, Mapping),
-        lambda m: "{" + ", ".join(f"{k}: {v}" for k, v in m.items()) + "}"
-    )
-    b1 = {list: "[", tuple: "(", set: "{"}
-    b2 = {list: "]", tuple: ")", set: "}"}
-
-    result = deep_apply(
-        result,
-        lambda x: (
-                isinstance(obj, Iterable)
-                and not isinstance(obj, (*_StringLike, Mapping))
-        ),
-        lambda i: (
-                b1.get(type(i), "[")
-                + ", ".join(str(x) for x in i)
-                + b2.get(type(i), "]")
-        )
-    )
-
-    return result
