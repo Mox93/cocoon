@@ -1,5 +1,7 @@
 from typing import (
     Any,
+    Mapping,
+    Iterable,
     List,
     Optional,
     Tuple,
@@ -7,7 +9,10 @@ from typing import (
 )
 
 from cocoon.core import fake
-from cocoon.utils import deep_apply
+from cocoon.utils import (
+    _StringLike,
+    deep_apply,
+)
 
 
 class Arguments(object):
@@ -16,7 +21,7 @@ class Arguments(object):
         self.kwargs = kwargs
 
     def __repr__(self):
-        args = ", ".join(_repr(self.args))
+        args = ", ".join(_repr(arg) for arg in self.args)
         kwargs = ", ".join(
             f"{key}={value}" for key, value in self.kwargs.items()
         )
@@ -99,10 +104,6 @@ class Proxy(object):
 
         return obj
 
-    @classmethod
-    def __set_core__(cls, generator):
-        cls.__core__ = generator
-
     def __repr__(self):
         result = f"{self.__class__.__name__}()"
 
@@ -124,4 +125,27 @@ def _resolve(obj):
 
 
 def _repr(obj):
-    return deep_apply(obj, lambda x: isinstance(x, Proxy), repr)
+    result = deep_apply(obj, lambda x: isinstance(x, str), lambda s: f"'{s}'")
+    result = deep_apply(result, lambda x: isinstance(x, Proxy), repr)
+    result = deep_apply(
+        result,
+        lambda x: isinstance(x, Mapping),
+        lambda m: "{" + ", ".join(f"{k}: {v}" for k, v in m.items()) + "}"
+    )
+    b1 = {list: "[", tuple: "(", set: "{"}
+    b2 = {list: "]", tuple: ")", set: "}"}
+
+    result = deep_apply(
+        result,
+        lambda x: (
+                isinstance(obj, Iterable)
+                and not isinstance(obj, (*_StringLike, Mapping))
+        ),
+        lambda i: (
+                b1.get(type(i), "[")
+                + ", ".join(str(x) for x in i)
+                + b2.get(type(i), "]")
+        )
+    )
+
+    return result
