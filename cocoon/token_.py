@@ -20,6 +20,8 @@ __all__ = ("Token",)
 
 
 T = TypeVar("T")
+_IntOrStr = Union[int, str]
+_TokenOrStr = Union["Token[T]", str]
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
@@ -189,16 +191,16 @@ class Token(Generic[T], metaclass=TokenMeta):
         self.__anonymous = anonymous
 
         # For cashing instances with fixed replacement of the current token.
-        self.__cached: Dict[Union[str, int], Any] = {}
+        self.__cached: Dict[_IntOrStr, Token] = {}
 
-    def __getitem__(self, item: Union[int, str]) -> "Token":
+    def __getitem__(self, item: _IntOrStr) -> "Token":
         _validate_item(item)
 
         if item in self.__cached:
             return self.__cached[item]
 
         token = Token(
-            self.replacement,
+            self.value,
             full_match=self.__full_match,
             anonymous=self.__anonymous,
             call_depth=0,
@@ -225,7 +227,7 @@ class Token(Generic[T], metaclass=TokenMeta):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: _TokenOrStr):
         return str(self) == str(other)
 
     @classmethod
@@ -256,7 +258,7 @@ class Token(Generic[T], metaclass=TokenMeta):
             *,
             reset: bool = True
     ) -> None:
-        cls.core.__set_core__(core)
+        Proxy.__core__ = core
 
         if reset is True:
             for token in cls.__instances__.values():
@@ -275,35 +277,35 @@ class Token(Generic[T], metaclass=TokenMeta):
         return self.__size or self.__size__
 
     @property
-    def replacement(self) -> T:
-        replacement = self.__replacement
+    def value(self) -> T:
+        result = self.__replacement
         tries = 0
 
-        while callable(replacement):
-            if isinstance(replacement, Proxy):
-                replacement = replacement.__resolve__()
+        while callable(result):
+            if isinstance(result, Proxy):
+                result = result.__resolve__()
                 continue
 
             if tries > self.__call_depth:
                 break
 
-            replacement = replacement()
+            result = result()
             tries += 1
 
-        if callable(replacement) and not self.__always_replace:
+        if callable(result) and not self.__always_replace:
             raise RuntimeError(
                 "maximum call depth was reached and replacement is still a "
                 "callable."
             )
 
-        return replacement
+        return result
 
     def inject_into(
             self,
-            obj: Union[str, "Token[T]"],
+            obj: _TokenOrStr,
             *,
             deep: bool = True,
-    ) -> Union[str, T]:
+    ) -> Union[T, str]:
         _validate_obj(obj)
 
         result = str(obj)
@@ -312,7 +314,7 @@ class Token(Generic[T], metaclass=TokenMeta):
         if self.__full_match:
             for token in (self, *cached):
                 if token == result:
-                    result = self.replacement
+                    result = self.value
                     break
                 elif str(token) in result:
                     raise ValueError(_FULL_MATCH_EXCEPTION_MESSAGE)
@@ -321,18 +323,18 @@ class Token(Generic[T], metaclass=TokenMeta):
             count = result.count(str(self))
 
             for _ in range(count):
-                result = result.replace(str(self), str(self.replacement), 1)
+                result = result.replace(str(self), str(self.value), 1)
 
             for token in cached:
                 result = token.inject_into(result)
 
         return result
 
-    def reset_cache(self, *keys: Union[int, str]) -> None:
+    def reset_cache(self, *keys: _IntOrStr) -> None:
         [_validate_item(key) for key in keys]
 
         keys = keys or self.__cached.keys()
 
         for key in keys:
             if token := self.__cached.get(key):
-                token.__replacement = self.replacement
+                token.__replacement = self.value
