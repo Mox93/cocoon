@@ -7,8 +7,6 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterable,
-    Mapping,
     overload,
     Set,
     TypeVar,
@@ -22,8 +20,6 @@ __all__ = ("Token",)
 
 
 T = TypeVar("T")
-_Cleanup = Union[int, str, Iterable[Union[int, str]], bool]
-_ClassCleanup = Union[Mapping["Token", _Cleanup], Iterable["Token"], bool]
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
@@ -232,17 +228,6 @@ class Token(Generic[T], metaclass=TokenMeta):
     def __eq__(self, other: Any):
         return str(self) == str(other)
 
-    def __cleanup__(self, reset: _Cleanup) -> None:
-        if type(reset) in (int, str):
-            self.reset_cache(reset)
-
-        elif isinstance(reset, Iterable):
-            if reset := tuple(reset):
-                self.reset_cache(*reset)
-
-        elif reset is True:
-            self.reset_cache()
-
     @classmethod
     @overload
     def parse(cls, obj: "Token[T]") -> T: ...
@@ -265,20 +250,17 @@ class Token(Generic[T], metaclass=TokenMeta):
         return result
 
     @classmethod
-    def set_core(cls, core: Any, reset: _ClassCleanup = True) -> None:
+    def set_core(
+            cls,
+            core: Any,
+            *,
+            reset: bool = True
+    ) -> None:
         cls.core.__set_core__(core)
 
-        if isinstance(reset, Mapping):
-            for token, cleanup in reset.items():
-                token.__cleanup__(cleanup)
-
-        elif isinstance(reset, Iterable):
-            for token in reset:
-                token.__cleanup__(True)
-
-        elif reset is True:
+        if reset is True:
             for token in cls.__instances__.values():
-                token.__cleanup__(reset)
+                token.reset_cache()
 
     @property
     def brackets(self) -> str:
@@ -302,7 +284,7 @@ class Token(Generic[T], metaclass=TokenMeta):
                 replacement = replacement.__resolve__()
                 continue
 
-            if tries >= self.__call_depth:
+            if tries > self.__call_depth:
                 break
 
             replacement = replacement()
@@ -310,8 +292,8 @@ class Token(Generic[T], metaclass=TokenMeta):
 
         if callable(replacement) and not self.__always_replace:
             raise RuntimeError(
-                "maximum call depth was reached and replacement is "
-                "still a callable."
+                "maximum call depth was reached and replacement is still a "
+                "callable."
             )
 
         return replacement
@@ -320,7 +302,6 @@ class Token(Generic[T], metaclass=TokenMeta):
             self,
             obj: Union[str, "Token[T]"],
             *,
-            reset: _Cleanup = False,
             deep: bool = True,
     ) -> Union[str, T]:
         _validate_obj(obj)
@@ -345,14 +326,13 @@ class Token(Generic[T], metaclass=TokenMeta):
             for token in cached:
                 result = token.inject_into(result)
 
-        self.__cleanup__(reset)
         return result
 
     def reset_cache(self, *keys: Union[int, str]) -> None:
         [_validate_item(key) for key in keys]
 
-        keys = keys or self.__cached.values()
+        keys = keys or self.__cached.keys()
 
         for key in keys:
             if token := self.__cached.get(key):
-                token.__replacement__ = self.replacement
+                token.__replacement = self.replacement
