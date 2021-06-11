@@ -11,8 +11,8 @@ from typing import (
     Union,
 )
 
-from cocoon.token_ import Token
-from cocoon.utils import deep_apply
+from pynamic.token_ import Token
+from pynamic.utils import deep_apply
 
 
 T = TypeVar("T")
@@ -62,12 +62,12 @@ class _FastAPI(Protocol):
 
 def dynamic_openapi(app: _FastAPI, get_openapi: OpenAPIGenerator):
     """
-
+    TODO write documentation
     :param app:
     :param get_openapi:
     :return:
     """
-    def parse_openapi():
+    def custom_openapi():
         if not app.openapi_schema:
             app.openapi_schema = get_openapi(
                 title=app.title,
@@ -80,4 +80,4 @@ def dynamic_openapi(app: _FastAPI, get_openapi: OpenAPIGenerator):
 
         return parse(app.openapi_schema)
 
-    return parse_openapi
+    return custom_openapi

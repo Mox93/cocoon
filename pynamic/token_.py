@@ -13,7 +13,7 @@ from typing import (
     Union,
 )
 
-from cocoon.proxy import Proxy
+from pynamic.proxy import Proxy
 
 
 __all__ = ("Token",)

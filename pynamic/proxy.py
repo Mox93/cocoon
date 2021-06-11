@@ -6,8 +6,8 @@ from typing import (
     Union,
 )
 
-from cocoon.core import fake
-from cocoon.utils import deep_apply
+from pynamic.core import fake
+from pynamic.utils import deep_apply
 
 
 class Arguments(object):

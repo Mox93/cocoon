@@ -5,7 +5,7 @@ from datetime import (
 from time import time
 from typing import Union
 
-from cocoon.token_ import Token
+from pynamic.token_ import Token
 
 
 # Can be used in the Field example argument instead of 'None' because pydantic

@@ -1,5 +1,5 @@
-from cocoon.parser import parse
-from cocoon.token_ import Token
+from pynamic.parser import parse
+from pynamic.token_ import Token
 
 
 __author__ = "Mohamed Ragaey Saleh"
