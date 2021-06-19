@@ -45,7 +45,8 @@ def parse(obj):
     )
 
 
-OpenAPIGenerator = Callable[..., Dict[str, Any]]
+JsonLike = Dict[str, Any]
+OpenAPIGenerator = Callable[..., JsonLike]
 BaseRoute = TypeVar("BaseRoute")
 
 
@@ -55,12 +56,15 @@ class _FastAPI(Protocol):
     openapi_version: str
     description: str
     routes: Sequence[BaseRoute]
-    tags: Optional[List[Dict[str, Any]]]
+    tags: Optional[List[JsonLike]]
     servers: Optional[List[Dict[str, Union[str, Any]]]]
-    openapi_schema: Dict[str, Any]
+    openapi_schema: JsonLike
 
 
-def dynamic_openapi(app: _FastAPI, get_openapi: OpenAPIGenerator):
+def dynamic_openapi(
+        app: _FastAPI,
+        get_openapi: OpenAPIGenerator,
+) -> Callable[[], JsonLike]:
     """
     TODO write documentation
     :param app:
