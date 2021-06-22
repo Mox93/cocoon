@@ -1,4 +1,4 @@
-from pynamic.parser import parse
+from pynamic.parser import parse, dynamic_openapi
 from pynamic.token import Token
 
 
@@ -11,6 +11,7 @@ __status__ = "Prototype"
 
 
 __all__ = (
+    dynamic_openapi,
     parser,
     Token,
 )
