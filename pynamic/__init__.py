@@ -1,5 +1,5 @@
 from pynamic.parser import parse
-from pynamic.token_ import Token
+from pynamic.token import Token
 
 
 __author__ = "Mohamed Ragaey Saleh"

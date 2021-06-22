@@ -11,7 +11,7 @@ from typing import (
     Union,
 )
 
-from pynamic.token_ import Token
+from pynamic.token import Token
 from pynamic.utils import deep_apply
 
 
