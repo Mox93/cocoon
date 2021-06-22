@@ -72,7 +72,7 @@ class Proxy(object):
 
     def __resolve__(self) -> Any:
         if self.__core__ is None:
-            raise ValueError(
+            raise RuntimeError(
                 "No core was found.\n"
                 "TIP: you can install 'faker' and it will be used as the core "
                 "or define your own core and set it though "
