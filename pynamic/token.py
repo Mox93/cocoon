@@ -246,7 +246,9 @@ class Token(Generic[T], metaclass=TokenMeta):
         placeholders = set(findall("|".join(cls.__regex__), result))
 
         for key in placeholders:
-            if token := cls.__instances__.get(key):
+            token = cls.__instances__.get(key)
+
+            if token:
                 result = token.inject_into(result, deep=False)
 
         return result
@@ -336,5 +338,7 @@ class Token(Generic[T], metaclass=TokenMeta):
         keys = keys or self.__cached.keys()
 
         for key in keys:
-            if token := self.__cached.get(key):
+            token = self.__cached.get(key)
+
+            if token:
                 token.__replacement = self.value
