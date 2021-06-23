@@ -5,7 +5,12 @@ from datetime import (
 from time import time
 from typing import Union
 
-from pynamic.token import Token
+from .token import Token
+
+
+def _digit_sequence(length: int):
+    digit = Token(Token.core.random_digit, anonymous=True)
+    return lambda: sum(digit.value * 10 ** i for i in range(length))
 
 
 # Can be used in the Field example argument instead of 'None' because pydantic
@@ -55,7 +60,7 @@ LOCALE = Token[str](Token.core.language_code)
 USER_AGENT = Token[str](Token.core.user_agent)
 PROTOCOL = Token[str](Token.core.protocol)
 SEMVER = Token[str](  # noqa
-    lambda: (lambda digit: digit.inject_into(f"{digit}.{digit}.{digit}"))(
+    lambda: (lambda digit: ".".join(str(digit.value) for _ in range(3)))(
         Token(Token.core.random_digit, anonymous=True)
     )
 )
@@ -106,7 +111,17 @@ TRANSPORT_IMAGE = Token[str]("http://lorempixel.com/640/480/transport")
 #  IMAGE_DATA_URI
 
 # Finance
-
+BANK_ACCOUNT = Token[int](_digit_sequence(8))
+CREDIT_CARD_MASK = Token[int](_digit_sequence(4))
+BANK_ACCOUNT_IBAN = Token[str](Token.core.iban)
+CURRENCY_CODE = Token[str](Token.core.currency_code)
+CURRENCY_NAME = Token[str](Token.core.currency_name)
+CURRENCY_SYMBOL = Token[str](Token.core.currency_symbol)
+# TODO
+#  BANK_ACCOUNT_NAME
+#  BANK_ACCOUNT_BIC
+#  TRANSACTION_TYPE
+#  BITCOIN
 
 # Business
 
