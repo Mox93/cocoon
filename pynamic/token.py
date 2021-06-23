@@ -13,7 +13,7 @@ from typing import (
     Union,
 )
 
-from pynamic.proxy import Proxy
+from .proxy import Proxy
 
 
 __all__ = ("Token",)
@@ -30,6 +30,9 @@ _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
 _FULL_MATCH_EXCEPTION_MESSAGE = (
     "injecting a full_match token into a string is not allowed.\n"
     "TIP: if you're using NONE it must be on its own, not within a string."
+)
+_DEPTH_EXCEEDED_EXCEPTION_MESSAGE = (
+    "maximum call depth was reached and replacement is still a callable."
 )
 
 
@@ -83,7 +86,7 @@ def _validate_meta(brackets: str, prefix: str, size: int) -> None:
         _validate_size(size)
 
 
-def _validate_obj(obj):
+def _validate_obj(obj) -> None:
     if not isinstance(obj, (Token, str)):
         raise TypeError("'obj' can only be of type <Token> or <str>")
 
@@ -295,10 +298,7 @@ class Token(Generic[T], metaclass=TokenMeta):
             tries += 1
 
         if callable(result) and not self.__always_replace:
-            raise RuntimeError(
-                "maximum call depth was reached and replacement is still a "
-                "callable."
-            )
+            raise RuntimeError(_DEPTH_EXCEEDED_EXCEPTION_MESSAGE)
 
         return result
 

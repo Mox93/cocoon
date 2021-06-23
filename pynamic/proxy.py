@@ -6,8 +6,18 @@ from typing import (
     Union,
 )
 
-from pynamic.core import fake
-from pynamic.utils import deep_apply
+from .core import fake
+from .utils import deep_apply
+
+
+_MISSING_CORE_EXCEPTION_MESSAGE = (
+    "No core was found.\nTIP: you can install 'faker' and it will be used as "
+    "the core or define your own core and pass it to 'Token.set_core'."
+)
+_INCORRECT_ELEMENT_EXCEPTION_MESSAGE = (lambda element: (
+    f"element '{element}' of type <{type(element)}> was found in __queue__. "
+    f"Only <Arguments> or <Item> types are accepted."
+))
 
 
 class Arguments(object):
@@ -72,12 +82,7 @@ class Proxy(object):
 
     def __resolve__(self) -> Any:
         if self.__core__ is None:
-            raise RuntimeError(
-                "No core was found.\n"
-                "TIP: you can install 'faker' and it will be used as the core "
-                "or define your own core and set it though "
-                "'Token.set_core(core)'."
-            )
+            raise RuntimeError(_MISSING_CORE_EXCEPTION_MESSAGE)
 
         obj = self.__core__
 
@@ -94,8 +99,7 @@ class Proxy(object):
                     obj = obj[element.item]
                 else:
                     raise ValueError(
-                        f"element '{element}' of type "
-                        f"{type(element)} was found."
+                        _INCORRECT_ELEMENT_EXCEPTION_MESSAGE(element)
                     )
 
         return obj
