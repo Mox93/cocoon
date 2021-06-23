@@ -1,5 +1,5 @@
-from pynamic.parser import parse, dynamic_openapi
-from pynamic.token import Token
+from .parser import parse, dynamic_openapi
+from .token import Token
 
 
 __author__ = "Mohamed Ragaey Saleh"
@@ -12,7 +12,7 @@ __status__ = "Prototype"
 
 __all__ = (
     dynamic_openapi,
-    parser,
+    parse,
     Token,
 )
 
