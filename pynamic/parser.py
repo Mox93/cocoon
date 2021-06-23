@@ -11,8 +11,8 @@ from typing import (
     Union,
 )
 
-from pynamic.token import Token
-from pynamic.utils import deep_apply
+from .token import Token
+from .utils import deep_apply
 
 
 T = TypeVar("T")
@@ -38,11 +38,7 @@ def parse(obj):
     :return: a new object with all placeholders replaced with the appropriate
      value.
     """
-    return deep_apply(
-        obj,
-        lambda x: isinstance(x, (str, Token)),
-        Token.parse
-    )
+    return deep_apply(obj, lambda x: isinstance(x, (str, Token)), Token.parse)
 
 
 JsonLike = Dict[str, Any]
