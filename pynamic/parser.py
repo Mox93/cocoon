@@ -38,7 +38,7 @@ def parse(obj):
     :return: a new object with all placeholders replaced with the appropriate
      value.
     """
-    return deep_apply(obj, lambda x: isinstance(x, (str, Token)), Token.parse)
+    return deep_apply(obj, lambda x: isinstance(x, str), Token.parse)
 
 
 JsonLike = Dict[str, Any]
@@ -46,19 +46,18 @@ OpenAPIGenerator = Callable[..., JsonLike]
 BaseRoute = TypeVar("BaseRoute")
 
 
-class _FastAPI(Protocol):
+class FastAPI(Protocol):
     title: str
     version: str
     openapi_version: str
     description: str
     routes: Sequence[BaseRoute]
-    tags: Optional[List[JsonLike]]
     servers: Optional[List[Dict[str, Union[str, Any]]]]
     openapi_schema: JsonLike
 
 
 def dynamic_openapi(
-        app: _FastAPI,
+        app: FastAPI,
         get_openapi: OpenAPIGenerator,
 ) -> Callable[[], JsonLike]:
     """
@@ -73,7 +72,6 @@ def dynamic_openapi(
                 title=app.title,
                 version=app.version,
                 description=app.description,
-                tags=app.tags,
                 routes=app.routes,
                 servers=app.servers
             )
