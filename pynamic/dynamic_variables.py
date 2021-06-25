@@ -80,7 +80,7 @@ JOB_AREA = Token[str](Token.core.job_area)
 #  JOB_TYPE
 
 # Phone, Address and Location
-PHONE_NUMBER_EXT = Token[str](Token.core.phone_number)
+PHONE_NUMBER = Token[str](Token.core.phone_number)
 CITY = Token[str](Token.core.city)
 STREET_NAME = Token[str](Token.core.street_name)
 STREET_ADDRESS = Token[str](Token.core.street_address)
@@ -90,7 +90,7 @@ LATITUDE = Token[float](Token.core.latitude)
 LONGITUDE = Token[float](Token.core.longitude)
 ADDRESS = Token[str](Token.core.address)
 # TODO
-#  PHONE_NUMBER
+#  PHONE_NUMBER_EXT
 
 # Images
 IMAGE_URL = Token[str](Token.core.image_url)
