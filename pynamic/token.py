@@ -78,12 +78,9 @@ def _validate_item(item):
 
 
 def _validate_meta(brackets: str, prefix: str, size: int) -> None:
-    if brackets is not None:
-        _validate_brackets(brackets)
-    if prefix is not None:
-        _validate_prefix(prefix)
-    if size is not None:
-        _validate_size(size)
+    _validate_brackets(brackets)
+    _validate_prefix(prefix)
+    _validate_size(size)
 
 
 def _validate_obj(obj) -> None:
@@ -91,17 +88,23 @@ def _validate_obj(obj) -> None:
         raise TypeError("'obj' can only be of type <Token> or <str>")
 
 
+def _generate_token(brackets: str, prefix: str, size: int) -> str:
+    i = len(brackets) // 2
+
+    return f"{brackets[:i]}{prefix}{token_urlsafe(size)}{brackets[i:]}"
+
+
 def _generate_regex(
         brackets: str,
         prefix: str,
-        id_: str,
+        size: int,
 ) -> str:
     i = len(brackets) // 2
     b1 = "\\".join(char for char in brackets[:i])
     b2 = "\\".join(char for char in brackets[i:])
     p = "\\".join(char for char in prefix)
 
-    return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{len(id_)}}}\{b2}"
+    return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{size}}}\{b2}"
 
 
 class TokenMeta(type):
@@ -111,17 +114,14 @@ class TokenMeta(type):
         return Proxy()
 
 
-class Token(Generic[T], metaclass=TokenMeta):
+class Token(str, Generic[T], metaclass=TokenMeta):
     """A class for dynamically injecting values into objects."""
 
-    __prefix__: str = "$"
-    __brackets__: str = "{{}}"
-    __size__: int = 8
     __instances__: Dict[str, "Token"] = {}
     __regex__: Set[str] = set()
 
-    def __init__(
-            self,
+    def __new__(
+            cls,
             replacement: Union[Proxy, Callable[[], T], T],
             *,
             full_match: bool = False,
@@ -132,7 +132,7 @@ class Token(Generic[T], metaclass=TokenMeta):
             #  - accept user defined matching method.
             #  - accept user defined replacing method.
             **kwargs,
-    ) -> None:
+    ) -> "Token[T]":
         """
         A token instance that functions as a placeholder for the given
         replacement.
@@ -161,40 +161,44 @@ class Token(Generic[T], metaclass=TokenMeta):
             The byte size of the token_urlsafe used as id.
         """
 
-        brackets: str = kwargs.get("brackets")
-        prefix: str = kwargs.get("prefix")
-        size: int = kwargs.get("size")
+        brackets: str = kwargs.get("brackets", "{{}}")
+        prefix: str = kwargs.get("prefix", "$")
+        size: int = kwargs.get("size", 8)
 
         _validate_meta(brackets, prefix, size)
 
+        placeholder = _generate_token(brackets, prefix, size)
+        token = super(Token, cls).__new__(cls, placeholder)
+
         # The meta data used for creating a placeholder, needed for creating
         # cached instances.
-        self.__prefix = prefix
-        self.__brackets = brackets
-        self.__size = size
-
-        # The unique id that will be used to identify the placeholder to
-        # replace it with the final value at parsing or injection time.
-        self.__id = token_urlsafe(self.size)
+        token.__prefix = prefix
+        token.__brackets = brackets
+        token.__size = size
 
         if not anonymous:
             # Keep track of all instances for parsing and resetting.
-            self.__instances__[str(self)] = self
+            if cls.__instances__.get(str(token)):
+                raise RuntimeError("Token collision.")
+
+            cls.__instances__[str(token)] = token
 
             # Adding to the regular expression used for extracting placeholders.
-            self.__regex__.add(
-                _generate_regex(self.brackets, self.prefix, self.__id)
-            )
+            id_length = len(placeholder) - len(brackets + prefix)
+            cls.__regex__.add(_generate_regex(brackets, prefix, id_length))
 
         # Arguments passed at class initialization.
-        self.__replacement = replacement
-        self.__full_match = full_match
-        self.__call_depth = call_depth
-        self.__always_replace = always_replace
-        self.__anonymous = anonymous
+        token.__replacement = replacement
+        token.__full_match = full_match
+        token.__call_depth = call_depth
+        token.__always_replace = always_replace
+        token.__anonymous = anonymous
 
         # For cashing instances with fixed replacement of the current token.
-        self.__cached: Dict[_IntOrStr, Token] = {}
+        cached: Dict[_IntOrStr, Token] = {}
+        token.__cached = cached
+
+        return token
 
     def __getitem__(self, item: _IntOrStr) -> "Token":
         _validate_item(item)
@@ -208,24 +212,13 @@ class Token(Generic[T], metaclass=TokenMeta):
             anonymous=self.__anonymous,
             call_depth=0,
             always_replace=self.__always_replace,
-            prefix=self.prefix,
-            brackets=self.brackets,
-            size=self.size,
+            prefix=self.__prefix,
+            brackets=self.__brackets,
+            size=self.__size,
         )
         self.__cached[item] = token
 
         return token
-
-    def __str__(self):
-        brackets = self.brackets
-        prefix = self.prefix
-        id_ = self.__id
-        i = len(brackets) // 2
-
-        return f"{brackets[:i]}{prefix}{id_}{brackets[i:]}"
-
-    def __repr__(self):
-        return f"'{self}'"
 
     def __hash__(self):
         return hash(str(self))
@@ -268,18 +261,6 @@ class Token(Generic[T], metaclass=TokenMeta):
         if reset is True:
             for token in cls.__instances__.values():
                 token.reset_cache()
-
-    @property
-    def brackets(self) -> str:
-        return self.__brackets or self.__brackets__
-
-    @property
-    def prefix(self) -> str:
-        return self.__prefix or self.__prefix__
-
-    @property
-    def size(self) -> int:
-        return self.__size or self.__size__
 
     @property
     def value(self) -> T:
