@@ -21,7 +21,6 @@ __all__ = ("Token",)
 
 T = TypeVar("T")
 _IntOrStr = Union[int, str]
-_TokenOrStr = Union["Token[T]", str]
 
 
 _NON_ALPHANUMERIC_EXCEPTION_MESSAGE = (
@@ -84,7 +83,7 @@ def _validate_meta(brackets: str, prefix: str, size: int) -> None:
 
 
 def _validate_obj(obj) -> None:
-    if not isinstance(obj, (Token, str)):
+    if type(obj) not in (Token, str):
         raise TypeError("'obj' can only be of type <Token> or <str>")
 
 
@@ -105,6 +104,20 @@ def _generate_regex(
     p = "\\".join(char for char in prefix)
 
     return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{size}}}\{b2}"
+
+
+def _call_once(function: Callable[[], T]) -> Callable[[], T]:
+    result: T = ...
+
+    def inner_function():
+        nonlocal result
+
+        if result is ...:
+            result = function()
+
+        return result
+
+    return inner_function
 
 
 def _match_sequence(tokens, target):
@@ -208,7 +221,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
         token.__anonymous = anonymous
 
         # For cashing instances with fixed replacement of the current token.
-        cached: Dict[_IntOrStr, Token] = {}
+        cached: Dict[_IntOrStr, Token[T]] = {}
         token.__cached = cached
 
         return token
@@ -220,7 +233,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
             return self.__cached[item]
 
         token = Token(
-            self.value,
+            _call_once(lambda: self.value),
             full_match=self.__full_match,
             anonymous=self.__anonymous,
             call_depth=0,
@@ -236,7 +249,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self, other: _TokenOrStr):
+    def __eq__(self, other: Union["Token[T]", str]):
         return str(self) == str(other)
 
     @classmethod
@@ -345,4 +358,4 @@ class Token(str, Generic[T], metaclass=TokenMeta):
             token = self.__cached.get(key)
 
             if token:
-                token.__replacement = self.value
+                token.__replacement = _call_once(lambda: self.value)
