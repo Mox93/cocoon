@@ -107,6 +107,19 @@ def _generate_regex(
     return rf"\{b1}\{p}[a-zA-Z_\d\-]{{{size}}}\{b2}"
 
 
+def _match_sequence(tokens, target):
+    result = []
+
+    for token in target:
+        try:
+            i = tokens.index(token)
+            result.append(tokens[i])
+        except ValueError:
+            pass
+
+    return result
+
+
 class TokenMeta(type):
     """A metaclass for containing the 'core' class property."""
     @property
@@ -238,16 +251,22 @@ class Token(str, Generic[T], metaclass=TokenMeta):
     def parse(cls, obj):
         _validate_obj(obj)
 
-        result = str(obj)
-        placeholders = set(findall("|".join(cls.__regex__), result))
+        placeholders = findall("|".join(cls.__regex__), obj)
 
         for key in placeholders:
             token = cls.__instances__.get(key)
 
-            if token:
-                result = token.inject_into(result, deep=False)
+            if not token:
+                continue
 
-        return result
+            obj = token.inject_into(
+                obj,
+                deep=False,
+                __first_only__=True,
+                __placeholders__=placeholders
+            )
+
+        return obj
 
     @classmethod
     def set_core(
@@ -283,35 +302,39 @@ class Token(str, Generic[T], metaclass=TokenMeta):
 
         return result
 
-    def inject_into(
-            self,
-            obj: _TokenOrStr,
-            *,
-            deep: bool = True,
-    ) -> Union[T, str]:
+    @overload
+    def inject_into(self, obj: str, **kwargs) -> Union[T, str]: ...
+
+    @overload
+    def inject_into(self, obj: "Token[T]", **kwargs) -> Union[T, "Token[T]"]:
+        ...
+
+    def inject_into(self, obj, *, deep: bool = True, **kwargs):
         _validate_obj(obj)
 
-        result = str(obj)
-        cached = self.__cached.values() if deep else []
+        first_only = kwargs.get("__first_only__", False)
+        placeholders = kwargs.get(
+            "__placeholders__",
+            findall("|".join(self.__regex__), obj)
+        )
 
-        if self.__full_match:
-            for token in (self, *cached):
-                if token == result:
-                    result = self.value
-                    break
-                elif str(token) in result:
+        cached = self.__cached.values() if deep else []
+        tokens = _match_sequence([self, *cached], placeholders)
+
+        for token in tokens:
+            if token == obj:
+                return token.value
+
+            if token in obj:
+                if token.__full_match:
                     raise ValueError(_FULL_MATCH_EXCEPTION_MESSAGE)
 
-        else:
-            count = result.count(str(self))
+                obj = obj.replace(token, token.value, 1)
 
-            for _ in range(count):
-                result = result.replace(str(self), str(self.value), 1)
+                if first_only:
+                    return obj
 
-            for token in cached:
-                result = token.inject_into(result)
-
-        return result
+        return obj
 
     def reset_cache(self, *keys: _IntOrStr) -> None:
         [_validate_item(key) for key in keys]
