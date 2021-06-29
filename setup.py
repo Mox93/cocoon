@@ -1,7 +1,6 @@
 from setuptools import setup
 
 from pynamic import (
-
     __author__,
     __email__,
     __license__,
