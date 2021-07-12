@@ -163,7 +163,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
         A token instance that functions as a placeholder for the given
         replacement.
 
-        :param replacement: str
+        :param replacement: Union[Proxy, Callable[[], T], T]
             A value or callable that gets injected at the time of parsing.
         :param full_match: bool
             Whether the replacement value should be a stand alone token or can be
@@ -175,7 +175,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
         :param always_replace: bool
             After exceeding the call_depth:
             (if True) the replacement will be returned regardless of its type.
-            (if False) a ValueError will be raised if the replacement is still
+            (if False) a RuntimeError will be raised if the replacement is still
             a callable.
         :param kwargs: Additional customizations.
         :keyword brackets: str

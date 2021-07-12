@@ -6,7 +6,7 @@ Easily and quickly give openapi.json customizable dynamic values. Pynamic provid
 
 ## Installation
 
-This package can be install with or without Faker. If the built-in dynamic variables will be used, then install it as following:
+This package can be install with or without Faker. If the built-in dynamic variables are going to be used, then install it as following:
 
 ```bash
 pip install pynamic[faker]
@@ -19,6 +19,8 @@ pip install pynamic
 ```
 
 > Faker can be installed afterward if dynamic variables were needing later on.
+
+
 
 ## Usage Examples
 
@@ -42,13 +44,13 @@ app.openapi = dynamic_openapi(app, get_openapi)
 
 To get dynamically generated values with pynamic, there are only two steps:
 
-**step 1:** assign a token instance to the variable the needs a dynamic value.
+**step 1:** Assign a token instance to the variable the needs a dynamic value.
 
 ```python
 example=dv.FIRST_NAME
 ```
 
-**step 2:** replace the app's default openapi method with the output of the dynamic openapi function.
+**step 2:** Replace the app's default openapi method with the output of the dynamic openapi function.
 
 ```python
 app.openapi = dynamic_openapi(app, get_openapi)
@@ -116,4 +118,89 @@ In this example there are a couple of concepts:
    print(Token.parse(conversation))
    ```
 
-   
+
+
+
+## API
+
+---
+
+**`Token(...)`**
+
+The Token class is a subclass of string. Creating an instance of Token returns a placeholder used for injecting the replacement value.
+
+Arguments:
+
+​	[required]
+
+* `replacement`: <any>
+  The value or callable (that returns a value) that gets injected at the time of parsing.
+
+​	[optional]
+
+* `full_match`: <bool> `False`
+  Whether the replacement value should be a stand alone token or can be part of a string.
+* `anonymous`: <bool> `False`
+  Whether this instance should be held onto for parsing or not.
+* `call_depth`: <int> `10`
+  The number of nested callables a replacement can have.
+* `always_replace`: <bool> `False`
+  Determines how to handle the replacement after exceeding the `call_depth`. If `True` the replacement will be returned regardless of its type. If `False` a `ValueError` will be raised if the replacement is still a callable.
+
+```python
+NONE = Token(None, full_match=True)
+```
+
+---
+
+**`Token.core`** (class property)
+
+Returns a proxy object that can be used as if it's the Faker instance. This should only be used for the replacement argument while creating a Token instance.
+
+```python
+NAME = Token(Token.core.first_name)
+
+ALPHA_NUMERIC = Token(
+    Token.core.random_element(
+        elements=(
+            Token.core.random_digit(),
+            Token.core.random_lowercase_letter(),
+        )
+    )
+)
+```
+
+> > Notes:
+> >
+> > * In the example above, passing the function itself `Token.core.first_name` or calling it `Token.core.first_name()` will be handled the same.
+> > * By default the core property represents to a Faker instance, so Faker should be installed in order for it to work out of the box. It is possible to have core represent a *customized instance of Faker *(e.g. with support for other languages)*  or **different random value generator** by passing the generator to `Token.set_core(new_core)`.
+
+---
+
+**`Token.set_core(...)`** (class method)
+
+---
+
+**`Token.parse(...)`** (class method)
+
+---
+
+**`token.value`** (instance property)
+
+---
+
+**`token.inject_into(...)`** (instance method)
+
+---
+
+**`token.reset_cache(...)`** (instance method)
+
+---
+
+**`parse(...)`**
+
+---
+
+**`dynamic_openapi(...)`**
+
+---
