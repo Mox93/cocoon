@@ -133,19 +133,19 @@ Arguments:
 
 ​	[required]
 
-* `replacement`: <any>
+* `replacement`: \<any\>
   The value or callable (that returns a value) that gets injected at the time of parsing.
 
 ​	[optional]
 
-* `full_match`: <bool> `False`
+* `full_match`: \<bool\> `=False`
   Whether the replacement value should be a stand alone token or can be part of a string.
-* `anonymous`: <bool> `False`
+* `anonymous`: \<bool\> `=False`
   Whether this instance should be held onto for parsing or not.
-* `call_depth`: <int> `10`
+* `call_depth`: \<int\> `=10`
   The number of nested callables a replacement can have.
-* `always_replace`: <bool> `False`
-  Determines how to handle the replacement after exceeding the `call_depth`. If `True` the replacement will be returned regardless of its type. If `False` a `ValueError` will be raised if the replacement is still a callable.
+* `always_replace`: \<bool\> `=False`
+  Determines how to handle the replacement after exceeding the `call_depth`. If `True` the replacement will be returned regardless of its type. If `False` a `RuntimeError` will be raised if the replacement is still a callable.
 
 ```python
 NONE = Token(None, full_match=True)
@@ -153,7 +153,7 @@ NONE = Token(None, full_match=True)
 
 ---
 
-**`Token.core`** (class property)
+**`Token.core`** *(class property)*
 
 Returns a proxy object that can be used as if it's the Faker instance. This should only be used for the replacement argument while creating a Token instance.
 
@@ -170,30 +170,44 @@ ALPHA_NUMERIC = Token(
 )
 ```
 
-> > Notes:
-> >
-> > * In the example above, passing the function itself `Token.core.first_name` or calling it `Token.core.first_name()` will be handled the same.
-> > * By default the core property represents to a Faker instance, so Faker should be installed in order for it to work out of the box. It is possible to have core represent a *customized instance of Faker *(e.g. with support for other languages)*  or **different random value generator** by passing the generator to `Token.set_core(new_core)`.
+> **Notes:**
+>
+> * In the example above, passing the function itself `Token.core.first_name` or calling it `Token.core.first_name()` will be handled the same.
+> * By default the core property represents a Faker instance, so Faker should be installed in order for it to work out of the box. It is possible to have core represent a **customized instance of Faker** *(e.g. with support for other languages)*  or **different random value generator** by passing the generator to `Token.set_core(new_core)`.
 
 ---
 
-**`Token.set_core(...)`** (class method)
+**`Token.set_core(...)`** *(class method)*
+
+Used for replacing the instance of Faker that is used by the proxy object.
+
+Arguments:
+
+​	[required]
+
+* `core`: \<any\>
+  The instance of the random value generator that will be used by proxy object.
+
+​	[optional]
+
+* `reset`: \<bool\> `=True`
+  Weather or not values of the cached tokens using the old core should be replaced with valued using the new core.
 
 ---
 
-**`Token.parse(...)`** (class method)
+**`Token.parse(...)`** *(class method)*
 
 ---
 
-**`token.value`** (instance property)
+**`token.value`** *(instance property)*
 
 ---
 
-**`token.inject_into(...)`** (instance method)
+**`token.inject_into(...)`** *(instance method)*
 
 ---
 
-**`token.reset_cache(...)`** (instance method)
+**`token.reset_cache(...)`** *(instance method)*
 
 ---
 
