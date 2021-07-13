@@ -292,7 +292,8 @@ class Token(str, Generic[T], metaclass=TokenMeta):
 
         if reset is True:
             for token in cls.__instances__.values():
-                token.reset_cache()
+                if isinstance(token.__replacement, Proxy):
+                    token.reset_cache()
 
     @property
     def value(self) -> T:
