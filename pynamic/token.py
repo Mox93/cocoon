@@ -317,11 +317,13 @@ class Token(str, Generic[T], metaclass=TokenMeta):
         return result
 
     @overload
-    def inject_into(self, obj: str, **kwargs) -> Union[T, str]: ...
+    def inject_into(self, obj: "Token[T]", **kwargs) -> "Token[T]": ...
 
     @overload
-    def inject_into(self, obj: "Token[T]", **kwargs) -> Union[T, "Token[T]"]:
-        ...
+    def inject_into(self, obj: "Token[T]", **kwargs) -> T: ...
+
+    @overload
+    def inject_into(self, obj: str, **kwargs) -> str: ...
 
     def inject_into(self, obj, *, deep: bool = True, **kwargs):
         _validate_obj(obj)
