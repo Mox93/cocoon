@@ -2,6 +2,7 @@ from .parser import parse, dynamic_openapi
 from .token import Token
 
 
+__package__ = "pynamic"
 __author__ = "Mohamed Ragaey Saleh"
 __license__ = "MIT"
 __version__ = "0.2.0"
