@@ -15,6 +15,9 @@ from .token import Token
 from .utils import deep_apply
 
 
+__all__ = ("parse", "dynamic_openapi")
+
+
 T = TypeVar("T")
 
 
@@ -76,6 +79,9 @@ def dynamic_openapi(
                 servers=app.servers
             )
 
-        return parse(app.openapi_schema)
+        result = parse(app.openapi_schema)
+        Token.reset_all_cache()
+
+        return result
 
     return custom_openapi
