@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    List,
     overload,
     Set,
     TypeVar,
@@ -107,6 +108,11 @@ def _generate_regex(
 
 
 def _call_once(function: Callable[[], T]) -> Callable[[], T]:
+    """
+    Used for postponing resolving the token value till the first time it's parsed.
+    :param function:
+    :return:
+    """
     result: T = ...
 
     def inner_function():
@@ -120,7 +126,9 @@ def _call_once(function: Callable[[], T]) -> Callable[[], T]:
     return inner_function
 
 
-def _match_sequence(tokens, target):
+def _match_sequence(
+        tokens: List["Token"], target: List["Token"]
+) -> List["Token"]:
     result = []
 
     for token in target:
@@ -329,6 +337,7 @@ class Token(str, Generic[T], metaclass=TokenMeta):
         _validate_obj(obj)
 
         first_only = kwargs.get("__first_only__", False)
+        # to avoid doing regex pattern matching more than once
         placeholders = kwargs.get(
             "__placeholders__",
             findall("|".join(self.__regex__), obj)
@@ -362,3 +371,8 @@ class Token(str, Generic[T], metaclass=TokenMeta):
 
             if token:
                 token.__replacement = _call_once(lambda: self.value)
+
+    @classmethod
+    def reset_all_cache(cls, *keys: _IntOrStr):
+        for token in cls.__instances__.values():
+            token.reset_cache(*keys)
