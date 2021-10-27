@@ -10,6 +10,9 @@ from .core import fake
 from .utils import deep_apply
 
 
+__all__ = ("Proxy",)
+
+
 _MISSING_CORE_EXCEPTION_MESSAGE = (
     "No core was found.\nTIP: you can install 'faker' and it will be used as "
     "the core or define your own core and pass it to 'Token.set_core'."

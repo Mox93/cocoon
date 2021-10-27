@@ -9,6 +9,9 @@ from typing import (
 )
 
 
+__all__ = ("deep_apply",)
+
+
 T = TypeVar("T")
 R = TypeVar("R")
 
