@@ -199,6 +199,10 @@ Arguments:
 
 ---
 
+**`Token.reset_all_cache(...)`** *(class method)*
+
+---
+
 **`token.value`** *(instance property)*
 
 ---
